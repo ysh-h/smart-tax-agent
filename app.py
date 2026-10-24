@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 # ================= 页面配置 =================
-st.set_page_config(page_title="企业级智慧财税中台", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="ysh智慧财税中台", layout="wide", initial_sidebar_state="expanded")
 
 # ================= 高级UI美化 =================
 st.markdown("""
@@ -39,7 +39,7 @@ if 'declare_status' not in st.session_state:
 # ================= 侧边栏 =================
 with st.sidebar:
     st.markdown("<h2 style='text-align:center; color:#60A5FA;'>🏢 智慧财税中台</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; font-size:12px;'>设计人：<b>【填入你的名字】</b></p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; font-size:12px;'>设计人：<b>【ysh】</b></p>", unsafe_allow_html=True)
     st.markdown("---")
     menu = st.radio("业务导航", [
         "🏠 企业中心", 
