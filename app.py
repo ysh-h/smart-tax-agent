@@ -15,11 +15,26 @@ st.markdown("""
     [data-testid="stSidebar"] * { color: #94A3B8 !important; }
     [data-testid="stSidebar"] .stRadio label { font-size: 15px; padding: 12px; border-radius: 8px; transition: all 0.2s;}
     [data-testid="stSidebar"] .stRadio label:hover { background: #1E293B; color: #38BDF8 !important; }
+    
     div[data-testid="metric-container"] { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 4px solid #3B82F6; }
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #1E293B; font-weight: 800; font-size: 28px; }
+    
     h1 { color: #0F172A; font-weight: 800; font-size: 32px; }
     h3 { color: #1E293B; font-weight: 600; border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; margin-top: 20px;}
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
+    
+    /* 开发者专属名片样式 */
+    .dev-card {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    }
+    .dev-card p { margin: 0; color: #94A3B8; font-size: 13px; }
+    .dev-card h4 { margin: 5px 0 0 0; color: #38BDF8; font-size: 18px; font-weight: bold; letter-spacing: 1px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -29,7 +44,7 @@ if 'd' not in st.session_state:
         "name": "星耀科技（中国）有限公司", "industry": "软件与信息技术服务业",
         "revenue": 12000000.0, "cost": 6000000.0, "expense": 2000000.0, "input_vat": 250000.0,
         "employees": 120, "assets": 15000000.0, "is_high_tech": True, "rd_ratio": 0.08,
-        "entertainment": 150000.0, "advertising": 300000.0 # 业务招待费, 广告费
+        "entertainment": 150000.0, "advertising": 300000.0 
     }
 if 'filings' not in st.session_state: st.session_state.filings = []
 if 'adj_vat' not in st.session_state: st.session_state.adj_vat = 0.0
@@ -43,13 +58,10 @@ surcharge = vat_payable * 0.12
 profit = d["revenue"] - d["cost"] - d["expense"]
 
 # 税会差异调整计算
-# 业务招待费：发生额60% vs 营收5‰ 孰低扣除
 ent_deduct = min(d["entertainment"] * 0.6, d["revenue"] * 0.005)
 ent_adjust = max(0, d["entertainment"] - ent_deduct)
-# 广告费：营收15%限额
 ad_deduct = min(d["advertising"], d["revenue"] * 0.15)
 ad_adjust = max(0, d["advertising"] - ad_deduct)
-# 研发加计扣除：100%
 rd_deduct = d["revenue"] * d["rd_ratio"] * 1.0
 
 taxable_income = max(0, profit + ent_adjust + ad_adjust - rd_deduct)
@@ -73,12 +85,21 @@ with st.sidebar:
         "8. 🔔 政策更新与合规提醒"
     ])
     st.markdown("---")
-    st.caption("当前主体：星耀科技 | 数据安全：已加密")
+    
+    # 👇 这里是你专属的系统架构师名片 👇
+    st.markdown(f"""
+    <div class="dev-card">
+        <p>系统架构设计师</p>
+        <h4>ysh</h4>
+        <p style="margin-top:5px; font-size:11px;">ID: 2023xxxx</p>
+        <p style="margin-top:5px; font-size:11px; color:#10B981;">● 已通过系统身份认证</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ================= 1. 企业多维画像舱 =================
 if menu == "1. 🏢 企业多维画像舱":
     st.title("🏢 企业多维画像与经营诊断")
-    st.markdown("打破数据孤岛，构建涵盖工商、税务、财务的三维企业动态画像，为政策匹配与风控提供底座。")
+    st.markdown("欢迎使用由 **ysh** 主导设计的智慧财税决策系统。本系统打破数据孤岛，构建企业动态画像。")
     
     with st.container(border=True):
         c1, c2, c3 = st.columns(3)
@@ -95,7 +116,6 @@ if menu == "1. 🏢 企业多维画像舱":
     st.markdown("### 经营与税负健康度诊断")
     col_chart, col_desc = st.columns([1.5, 1])
     with col_chart:
-        # 杜邦分析与税负趋势
         months = ['1月', '2月', '3月', '4月', '5月', '6月']
         fig = go.Figure()
         fig.add_trace(go.Bar(x=months, y=[80, 95, 110, 105, 120, 130], name="营收(十万)", marker_color='#93C5FD'))
@@ -151,7 +171,7 @@ elif menu == "2. 📁 业财数据清洗池":
 # ================= 3. 智能算税与税会差异 =================
 elif menu == "3. 🧮 智能算税与税会差异":
     st.title("🧮 智能计税引擎与税会差异调整")
-    st.markdown("严格依据税法进行所得税汇算清缴模拟，展示复杂的纳税调整过程（业务招待费、广告费等）。")
+    st.markdown("严格依据税法进行所得税汇算清缴模拟，展示复杂的纳税调整过程。")
     
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("增值税", f"¥ {vat_payable:,.2f}")
