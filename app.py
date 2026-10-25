@@ -6,7 +6,7 @@ import plotly.express as px
 from datetime import date
 
 # ================= 页面配置 & 高级UI =================
-st.set_page_config(page_title="智慧财税管理智能体 - 专家版", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="ysh智慧财税管理智能体", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
