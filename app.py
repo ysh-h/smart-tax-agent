@@ -3,16 +3,14 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-import graphviz
 from datetime import date
-import io
 
 # ================= 页面配置 & 高级UI =================
-st.set_page_config(page_title="智慧财税管理智能体 - 企业级", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="智慧财税管理智能体 - 专家版", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
-    .stApp { background: #F8FAFC; font-family: 'PingFang SC', sans-serif; }
+    .stApp { background: #F4F7F9; font-family: 'PingFang SC', sans-serif; }
     [data-testid="stSidebar"] { background: #0F172A; box-shadow: 4px 0 15px rgba(0,0,0,0.1); }
     [data-testid="stSidebar"] * { color: #94A3B8 !important; }
     [data-testid="stSidebar"] .stRadio label { font-size: 15px; padding: 12px; border-radius: 8px; transition: all 0.2s;}
@@ -20,7 +18,7 @@ st.markdown("""
     div[data-testid="metric-container"] { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 4px solid #3B82F6; }
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { color: #1E293B; font-weight: 800; font-size: 28px; }
     h1 { color: #0F172A; font-weight: 800; font-size: 32px; }
-    h3 { color: #1E293B; font-weight: 600; border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; }
+    h3 { color: #1E293B; font-weight: 600; border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; margin-top: 20px;}
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -29,21 +27,32 @@ st.markdown("""
 if 'd' not in st.session_state:
     st.session_state.d = {
         "name": "星耀科技（中国）有限公司", "industry": "软件与信息技术服务业",
-        "revenue": 2400000.0, "cost": 1000000.0, "expense": 400000.0, "input_vat": 30000.0,
-        "employees": 85, "assets": 4000000.0, "is_high_tech": True, "rd_ratio": 0.06
+        "revenue": 12000000.0, "cost": 6000000.0, "expense": 2000000.0, "input_vat": 250000.0,
+        "employees": 120, "assets": 15000000.0, "is_high_tech": True, "rd_ratio": 0.08,
+        "entertainment": 150000.0, "advertising": 300000.0 # 业务招待费, 广告费
     }
-if 'filings' not in st.session_state:
-    st.session_state.filings = [] # 记录申报状态: {id, tax, period, amount, status}
+if 'filings' not in st.session_state: st.session_state.filings = []
 if 'adj_vat' not in st.session_state: st.session_state.adj_vat = 0.0
 
 d = st.session_state.d
 
-# 核心测算
+# 核心测算 (包含复杂的税会差异)
 vat_out = d["revenue"] * 0.06
 vat_payable = max(vat_out - d["input_vat"] + st.session_state.adj_vat, 0)
 surcharge = vat_payable * 0.12
 profit = d["revenue"] - d["cost"] - d["expense"]
-taxable_income = max(0, profit)
+
+# 税会差异调整计算
+# 业务招待费：发生额60% vs 营收5‰ 孰低扣除
+ent_deduct = min(d["entertainment"] * 0.6, d["revenue"] * 0.005)
+ent_adjust = max(0, d["entertainment"] - ent_deduct)
+# 广告费：营收15%限额
+ad_deduct = min(d["advertising"], d["revenue"] * 0.15)
+ad_adjust = max(0, d["advertising"] - ad_deduct)
+# 研发加计扣除：100%
+rd_deduct = d["revenue"] * d["rd_ratio"] * 1.0
+
+taxable_income = max(0, profit + ent_adjust + ad_adjust - rd_deduct)
 is_micro = taxable_income <= 3000000 and d["employees"] <= 300 and d["assets"] <= 50000000
 cit_rate = 0.05 if is_micro else (0.15 if d["is_high_tech"] else 0.25)
 cit_payable = taxable_income * cit_rate
@@ -51,194 +60,256 @@ total_tax = vat_payable + surcharge + cit_payable
 
 # ================= 侧边栏 =================
 with st.sidebar:
-    st.markdown("<h2 style='text-align:center; color:#38BDF8;'>⚡ 智慧财税平台</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:#38BDF8;'>⚡ 智慧财税专家台</h2>", unsafe_allow_html=True)
     st.markdown("---")
-    menu = st.radio("核心功能模块", [
-        "1. 🏢 企业中心 (画像)",
-        "2. 📁 多源数据采集与清洗",
-        "3. 🧮 自动计税与税会差异",
-        "4. 🚀 多税种一键申报",
-        "5. 🎯 政策适配与优惠测算",
-        "6. ⚠️ 机器学习风险看板",
-        "7. 🕸️ 税收知识图谱与NLP",
-        "8. 🔔 消息提醒与归档"
+    menu = st.radio("业务导航矩阵", [
+        "1. 🏢 企业多维画像舱",
+        "2. 📁 业财数据清洗池",
+        "3. 🧮 智能算税与税会差异",
+        "4. 🚀 申报流转与归档中心",
+        "5. 🎯 政策图谱与适配测算",
+        "6. ⚠️ 涉税风控机器学习",
+        "7. 🕸️ 知识图谱与NLP引擎",
+        "8. 🔔 政策更新与合规提醒"
     ])
     st.markdown("---")
-    st.caption("系统状态：在线 | 数据已加密")
+    st.caption("当前主体：星耀科技 | 数据安全：已加密")
 
-# ================= 1. 企业中心 =================
-if menu == "1. 🏢 企业中心 (画像)":
-    st.title("🏢 企业多维画像中心")
-    st.markdown("读取企业经营指标（行业、纳税身份、规模、注册地等），为政策匹配和风险分析提供底层支撑。")
+# ================= 1. 企业多维画像舱 =================
+if menu == "1. 🏢 企业多维画像舱":
+    st.title("🏢 企业多维画像与经营诊断")
+    st.markdown("打破数据孤岛，构建涵盖工商、税务、财务的三维企业动态画像，为政策匹配与风控提供底座。")
     
     with st.container(border=True):
         c1, c2, c3 = st.columns(3)
-        d["name"] = c1.text_input("企业名称", d["name"])
-        d["industry"] = c2.selectbox("所属行业", ["软件与信息技术服务业", "制造业", "批发零售业"])
-        d["is_high_tech"] = c3.checkbox("是否高新技术企业", value=d["is_high_tech"])
+        d["industry"] = c2.selectbox("行业属性", ["软件与信息技术服务业", "制造业", "批发零售业"])
+        d["is_high_tech"] = c3.checkbox("高新资质", value=d["is_high_tech"])
+        d["revenue"] = c1.number_input("年营业收入(元)", value=d["revenue"], step=100000.0)
         
         c4, c5, c6 = st.columns(3)
-        d["revenue"] = c4.number_input("年营业收入(元)", value=d["revenue"], step=10000.0)
-        d["employees"] = c5.number_input("从业人数(人)", value=d["employees"])
-        d["assets"] = c6.number_input("资产总额(元)", value=d["assets"], step=100000.0)
+        d["employees"] = c4.number_input("从业人员(人)", value=d["employees"])
+        d["assets"] = c5.number_input("资产总额(元)", value=d["assets"], step=100000.0)
+        d["rd_ratio"] = c6.slider("研发费占比", 0.0, 0.3, d["rd_ratio"], 0.01)
         st.session_state.d = d
 
-    st.markdown("### 企业画像雷达图")
-    fig = go.Figure(go.Scatterpolar(
-        r=[90, 80, 85, 95, 70], theta=['盈利水平', '资产规模', '研发实力', '税务合规', '现金流'],
-        fill='toself', line_color='#3B82F6'
-    ))
-    fig.update_layout(polar=dict(radialaxis=dict(visible=False, range=[0, 100])), showlegend=False, height=300)
-    st.plotly_chart(fig, use_container_width=True)
+    st.markdown("### 经营与税负健康度诊断")
+    col_chart, col_desc = st.columns([1.5, 1])
+    with col_chart:
+        # 杜邦分析与税负趋势
+        months = ['1月', '2月', '3月', '4月', '5月', '6月']
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=months, y=[80, 95, 110, 105, 120, 130], name="营收(十万)", marker_color='#93C5FD'))
+        fig.add_trace(go.Scatter(x=months, y=[4.2, 4.5, 4.1, 4.8, 4.3, 4.6], name="实际税负率(%)", yaxis='y2', line=dict(color='#EF4444', width=3)))
+        fig.update_layout(yaxis2=dict(overlaying='y', side='right'), height=300, margin=dict(l=0,r=0,t=10,b=0), plot_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig, use_container_width=True)
+    with col_desc:
+        st.info(f"""
+        **财务专家系统诊断：**
+        - **盈利状况**：企业营收处于上升期，利润率约为 **{profit/d['revenue']*100:.1f}%**。
+        - **税负表现**：综合税负率为 **{total_tax/d['revenue']*100:.2f}%**，略低于行业预警线。
+        - **研发实力**：研发投入占比 **{d['rd_ratio']*100:.1f}%**，{'完全满足' if d['rd_ratio']>=0.03 else '未满足'}高新企业及研发加计扣除要求。
+        """)
 
-# ================= 2. 数据采集与清洗 =================
-elif menu == "2. 📁 多源数据采集与清洗":
-    st.title("📁 多源数据接入与智能清洗")
-    st.markdown("支持对接财务系统、发票系统、银行流水；支持PDF/图片合同采集；完成勾稽关联校验。")
+# ================= 2. 业财数据清洗池 =================
+elif menu == "2. 📁 业财数据清洗池":
+    st.title("📁 多源数据清洗与业财税勾稽")
+    st.markdown("处理结构化（财务报表/银行流水）与非结构化（PDF/发票）数据，执行严格的“三流一致”校验。")
     
-    tab1, tab2, tab3 = st.tabs(["📊 财务与银行流水", "🧾 发票池勾稽", "📄 NLP合同抽取"])
+    tab1, tab2 = st.tabs(["📊 财务与发票勾稽校验", "📄 NLP合同与凭证抽取"])
     
     with tab1:
-        c1, c2 = st.columns(2)
-        d["cost"] = c1.number_input("本期营业成本(元)", value=d["cost"], step=10000.0)
-        d["expense"] = c2.number_input("本期期间费用(元)", value=d["expense"], step=10000.0)
-        st.info("✅ 数据清洗：已过滤异常值 0 条，金额口径统一转换为【元】。")
-        
-    with tab2:
-        st.dataframe(pd.DataFrame({
-            "来源": ["发票系统", "银行流水"],
-            "业务摘要": ["销售软件产品", "收到客户A货款"],
-            "金额(元)": [d["revenue"]*0.8, d["revenue"]*0.8],
-            "勾稽校验结果": ["✅ 业务-发票-流水三流一致", "✅ 业务-发票-流水三流一致"]
-        }), hide_index=True, use_container_width=True)
-        d["input_vat"] = st.number_input("确认本期认证抵扣进项税额(元)", value=d["input_vat"])
+        st.subheader("1. 核心财务指标录入")
+        c1, c2, c3 = st.columns(3)
+        d["cost"] = c1.number_input("营业成本(元)", value=d["cost"], step=100000.0)
+        d["expense"] = c2.number_input("期间费用(元)", value=d["expense"], step=10000.0)
+        d["input_vat"] = c3.number_input("进项税额(元)", value=d["input_vat"], step=1000.0)
         st.session_state.d = d
         
-    with tab3:
-        st.markdown("#### 非结构化文档智能识别")
-        st.file_uploader("上传PDF或图片采购合同", type=["pdf", "png", "jpg"])
-        st.success("NLP抽取完成！")
-        st.code('{\n  "合同类型": "软件采购合同",\n  "合同金额": 500000,\n  "适用印花税": "技术合同 0.03%",\n  "自动归类凭证": "管理费用-软件服务费"\n}', language="json")
-
-# ================= 3. 自动计税与税会差异 =================
-elif menu == "3. 🧮 自动计税与税会差异":
-    st.title("🧮 自动计税与税会差异调整")
-    st.markdown("依据税法规则自动计算，展示勾稽关系，支持人工复核干预。")
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("增值税", f"¥ {vat_payable:,.2f}", "6%一般计税")
-    c2.metric("企业所得税", f"¥ {cit_payable:,.2f}", "小微5%" if is_micro else "高新15%")
-    c3.metric("综合总税负", f"¥ {total_tax:,.2f}")
-
-    with st.container(border=True):
-        st.subheader("人工复核调整")
-        st.session_state.adj_vat = st.number_input("进项税额转出调整(元)", value=st.session_state.adj_vat, help="如存货非正常损失需转出")
-        st.button("重新测算")
-
-    st.markdown("### 申报表底稿预览")
-    st.dataframe(pd.DataFrame({
-        "行次": [1, 11, 12, 14, 20],
-        "项目": ["按适用税率计税销售额", "销项税额", "进项税额", "进项税额转出", "应纳税额合计"],
-        "金额(元)": [f"{d['revenue']:,.2f}", f"{vat_out:,.2f}", f"{d['input_vat']:,.2f}", f"{st.session_state.adj_vat:,.2f}", f"{vat_payable:,.2f}"]
-    }), hide_index=True, use_container_width=True)
-
-# ================= 4. 多税种一键申报 =================
-elif menu == "4. 🚀 多税种一键申报":
-    st.title("🚀 多税种一键申报与归档")
-    st.markdown("支持批量提交、查询申报状态，申报表支持下载归档。")
-    
-    with st.container(border=True):
-        st.write("系统检测到本期需申报以下税种：")
-        st.markdown(f"- 增值税及附加：¥ {vat_payable + surcharge:,.2f}")
-        st.markdown(f"- 企业所得税：¥ {cit_payable:,.2f}")
+        st.subheader("2. 发票池勾稽与异常校验")
+        st.dataframe(pd.DataFrame({
+            "发票代码": ["011002400111", "011002400112", "011002400113"],
+            "业务摘要": ["采购服务器", "办公用品", "咨询费"],
+            "金额(元)": [d["cost"]*0.5, 50000.0, 150000.0],
+            "勾稽结果": ["✅ 三流一致", "⚠️ 品名笼统，待核实", "✅ 三流一致"],
+            "进项税率": ["13%", "13%", "6%"]
+        }), hide_index=True, use_container_width=True)
         
-        if st.button("📦 批量提交申报", type="primary"):
-            st.session_state.filings.append({"id": f"SB-{len(st.session_state.filings)+1:03d}", "税种": "增值税及附加", "所属期": "2026-10", "金额": f"¥ {vat_payable + surcharge:,.2f}", "状态": "已申报"})
-            st.session_state.filings.append({"id": f"SB-{len(st.session_state.filings)+1:03d}", "税种": "企业所得税", "所属期": "2026-10", "金额": f"¥ {cit_payable:,.2f}", "状态": "已申报"})
-            st.success("批量申报成功！")
+    with tab2:
+        st.subheader("NLP 实体抽取与自动凭证归类")
+        st.code('''{
+  "合同名称": "星耀科技-阿里云服务器采购协议",
+  "合同金额": 150000.00,
+  "印花税税目": "买卖合同 (0.03%)",
+  "自动生成凭证": {
+      "借": "管理费用-云服务费 141509.43",
+      "借": "应交税费-应交增值税(进项) 8490.57",
+      "贷": "银行存款 150000.00"
+  }
+}''', language="json")
+        st.success("✅ 非结构化合同已成功解析，并自动映射至对应会计科目。")
 
-    st.markdown("### 申报状态查询与归档下载")
-    if st.session_state.filings:
-        st.dataframe(pd.DataFrame(st.session_state.filings), hide_index=True, use_container_width=True)
-        # 模拟下载
-        csv = pd.DataFrame(st.session_state.filings).to_csv(index=False).encode('utf-8-sig')
-        st.download_button("📥 打包下载全套申报表 (ZIP)", data=csv, file_name="申报表归档_202610.zip", mime="application/zip")
-    else:
-        st.info("暂无申报记录。")
+# ================= 3. 智能算税与税会差异 =================
+elif menu == "3. 🧮 智能算税与税会差异":
+    st.title("🧮 智能计税引擎与税会差异调整")
+    st.markdown("严格依据税法进行所得税汇算清缴模拟，展示复杂的纳税调整过程（业务招待费、广告费等）。")
+    
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("增值税", f"¥ {vat_payable:,.2f}")
+    c2.metric("企业所得税", f"¥ {cit_payable:,.2f}", f"{'小微5%' if is_micro else '高新15%' if d['is_high_tech'] else '法定25%'}")
+    c3.metric("税金及附加", f"¥ {surcharge:,.2f}")
+    c4.metric("综合总税负", f"¥ {total_tax:,.2f}")
 
-# ================= 5. 政策适配与优惠测算 =================
-elif menu == "5. 🎯 政策适配与优惠测算":
-    st.title("🎯 政策适配与优惠智能测算")
-    st.markdown("自动识别企业可享受优惠，区分已享受、可享受、暂不满足，提示留存备查资料。")
+    with st.container(border=True):
+        st.subheader("企业所得税纳税调整明细表 (A105000 模拟)")
+        
+        c1, c2 = st.columns(2)
+        d["entertainment"] = c1.number_input("业务招待费发生额(元)", value=d["entertainment"])
+        d["advertising"] = c2.number_input("广告宣传费发生额(元)", value=d["advertising"])
+        st.session_state.d = d
+        
+        st.markdown("#### 差异调整测算")
+        st.write(f"1. **业务招待费调整**：发生额 {d['entertainment']:,.2f} × 60% = {d['entertainment']*0.6:,.2f}；营收5‰ = {d['revenue']*0.005:,.2f}。孰低扣除。")
+        st.write(f"   👉 需纳税**调增**金额：`{ent_adjust:,.2f}` 元")
+        
+        st.write(f"2. **广告费调整**：营收15%限额 = {d['revenue']*0.15:,.2f}。")
+        st.write(f"   👉 需纳税**调增**金额：`{ad_adjust:,.2f}` 元")
+        
+        st.write(f"3. **研发费用加计扣除**：研发费用 {d['revenue']*d['rd_ratio']:,.2f} × 100%。")
+        st.write(f"   👉 可纳税**调减**金额：`{rd_deduct:,.2f}` 元")
+        
+        st.info(f"**会计利润**：{profit:,.2f} 元 ➡️ **纳税调整后应纳税所得额**：**{taxable_income:,.2f} 元**")
+
+    with st.container(border=True):
+        st.subheader("人工复核与特殊调整")
+        st.session_state.adj_vat = st.number_input("增值税进项税额转出(元)", value=st.session_state.adj_vat)
+        if st.button("重新测算"):
+            st.rerun()
+
+# ================= 4. 申报流转与归档中心 =================
+elif menu == "4. 🚀 申报流转与归档中心":
+    st.title("🚀 多税种一键申报与归档")
+    st.markdown("支持批量生成申报底稿，监控申报状态，并提供PDF/Excel归档下载。")
+    
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        st.subheader("申报操作")
+        st.write(f"本期待申报：增值税(¥{vat_payable:,.0f})、附加税(¥{surcharge:,.0f})、所得税(¥{cit_payable:,.0f})")
+        if st.button("📦 执行批量申报", type="primary", use_container_width=True):
+            st.session_state.filings.append({"申报编号": "SB202610001", "税种": "增值税", "申报金额": vat_payable, "状态": "✅ 申报成功"})
+            st.session_state.filings.append({"申报编号": "SB202610002", "税种": "企业所得税", "申报金额": cit_payable, "状态": "✅ 申报成功"})
+            st.success("申报成功，回执已生成！")
+            
+    with c2:
+        st.subheader("申报状态与归档")
+        if st.session_state.filings:
+            st.dataframe(pd.DataFrame(st.session_state.filings), hide_index=True, use_container_width=True)
+            csv = pd.DataFrame(st.session_state.filings).to_csv(index=False).encode('utf-8-sig')
+            st.download_button("📥 下载本期申报表及回执 (ZIP)", data=csv, file_name="税务申报归档.zip", mime="application/zip")
+        else:
+            st.info("暂无申报记录")
+
+# ================= 5. 政策图谱与适配测算 =================
+elif menu == "5. 🎯 政策图谱与适配测算":
+    st.title("🎯 税收政策智能适配与红利测算")
+    st.markdown("运用知识图谱逐项校验企业资质，区分政策状态，精准测算减免额度。")
     
     with st.container(border=True):
-        st.subheader("条件判定明细表")
+        st.subheader("政策适用条件自动判定报告")
         st.dataframe(pd.DataFrame([
-            {"政策": "小型微利优惠", "判断条件": "利润 ≤ 300万", "当前值": f"{taxable_income}", "结果": "✅ 满足"},
-            {"政策": "小型微利优惠", "判断条件": "人数 ≤ 300人", "当前值": f"{d['employees']}", "结果": "✅ 满足"},
-            {"政策": "高新15%税率", "判断条件": "具备高新资质", "当前值": "是", "结果": "✅ 满足"}
+            {"政策名称": "小型微利企业优惠", "判定条件": "利润≤300万,人数≤300", "企业当前状态": f"利润{taxable_income/10000:.1f}万,{d['employees']}人", "适配结果": "✅ 满足" if is_micro else "❌ 不满足"},
+            {"政策名称": "高新技术企业税率", "判定条件": "具备高新证书", "企业当前状态": "具备" if d['is_high_tech'] else "无", "适配结果": "✅ 满足" if d['is_high_tech'] else "❌ 不满足"},
+            {"政策名称": "研发费加计扣除", "判定条件": "研发费占比≥3%", "企业当前状态": f"{d['rd_ratio']*100}%", "适配结果": "✅ 满足" if d['rd_ratio']>=0.03 else "❌ 不满足"}
         ]), hide_index=True, use_container_width=True)
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.success("✅ **已享受**\n\n小微企业普惠减免")
+        st.success("✅ **已享受红利**")
+        st.metric("小微/高新减免所得税", f"¥ {taxable_income * (0.25 - cit_rate):,.2f}")
     with c2:
-        st.info("💡 **可享受测算**\n\n研发费用100%加计扣除\n\n减免额: ¥ " + f"{d['revenue']*d['rd_ratio']*0.05:,.2f}")
-        st.caption("留存备查：研发立项决议、辅助账。")
+        st.info("💡 **可追加享受测算**")
+        st.write(f"**研发费用加计扣除**\n预估可抵减所得税：¥ {rd_deduct * cit_rate:,.2f}")
+        st.caption("备查资料：研发项目立项决议、研发辅助账、工时分配表、领料单等。")
     with c3:
-        st.warning("⚠️ **暂不满足**\n\n软件产品增值税即征即退\n\n原因：未单独核算软件产品收入。")
+        st.warning("⚠️ **暂不满足政策**")
+        st.write("**软件产品即征即退**\n原因：当前发票未单独列示软件产品销售额。")
 
-# ================= 6. 机器学习风险看板 =================
-elif menu == "6. ⚠️ 机器学习风险看板":
-    st.title("⚠️ 机器学习涉税风险与合规整改")
-    st.markdown("识别异常财税指标，输出涉税风险报告并给出合规整改建议。")
+# ================= 6. 涉税风控机器学习 =================
+elif menu == "6. ⚠️ 涉税风控机器学习":
+    st.title("⚠️ 涉税风险机器学习预警")
+    st.markdown("基于孤立森林模型与行业对标数据，实时扫描财务指标，出具深度合规整改报告。")
     
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        fig = go.Figure(go.Indicator(mode = "gauge+number", value = 82, title = {'text': "风险预警指数"}, gauge = {'bar': {'color': "#EF4444"}}))
-        fig.update_layout(height=200, margin=dict(l=10, r=10, t=30, b=10))
+    col_gauge, col_risk = st.columns([1, 2])
+    with col_gauge:
+        st.markdown("### 综合风控指数")
+        fig = go.Figure(go.Indicator(
+            mode = "gauge+number", value = 78, title = {'text': "风险偏离度"},
+            gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#EF4444"}, 'steps': [{'range': [0, 50], 'color': "#D1FAE5"}, {'range': [50, 80], 'color': "#FEF3C7"}]}
+        ))
+        fig.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
         st.plotly_chart(fig, use_container_width=True)
-    with c2:
-        st.error("🚨 **高风险：增值税税负率异常**\n- 当前值: 1.2% | 行业均值: 3.5%\n- **整改建议**：核查是否存在未开票收入或进项税违规抵扣。")
-        st.warning("⚠️ **中风险：研发费用归集不规范**\n- **整改建议**：建立研发辅助账，区分研发与生产成本。")
-
-# ================= 7. 税收知识图谱与NLP =================
-elif menu == "7. 🕸️ 税收知识图谱与NLP":
-    st.title("🕸️ 税收知识图谱与NLP智能底座")
-    st.markdown("支撑政策推理、表单映射与涉税风险点溯源。")
     
-    st.subheader("1. 税收知识图谱网络")
-    # 使用 Graphviz 渲染专业知识图谱
-    graph = graphviz.Digraph()
-    graph.attr(rankdir='LR')
-    graph.node('企业', '星耀科技', shape='box', style='filled', color='lightblue')
-    graph.node('政策', '研发费用加计扣除', shape='ellipse', style='filled', color='lightgreen')
-    graph.node('税种', '企业所得税', shape='box', style='filled', color='lightyellow')
-    graph.node('风险', '高新资质不符', shape='diamond', style='filled', color='lightcoral')
-    graph.node('表单', 'A类预缴表', shape='note', style='filled', color='lavender')
-    
-    graph.edge('企业', '政策', label='适用条件')
-    graph.edge('政策', '税种', label='影响')
-    graph.edge('税种', '表单', label='映射')
-    graph.edge('企业', '风险', label='触发')
-    st.graphviz_chart(graph)
+    with col_risk:
+        st.markdown("### 深度风险诊断与整改方案")
+        st.error("""
+        🚨 **高风险：增值税税负率显著偏低**
+        - **指标比对**：当前税负率 2.08%，行业均值 3.5%。
+        - **触发原因**：可能存在未开票收入未申报，或违规扩大进项抵扣范围。
+        - **整改建议**：全面清查“预收账款”与“其他应付款”科目，核实是否有已发货未开票业务；复核近期进项发票的业务真实性。
+        """)
+        st.warning("""
+        ⚠️ **中风险：所得税贡献率异常**
+        - **指标比对**：所得税贡献率低于同行业预警下限。
+        - **整改建议**：核查是否存在多列成本费用、不合规税会调整。建议完善研发费用辅助账，充分享受加计扣除以合规降低税负。
+        """)
 
-    st.subheader("2. 财税智能问答 (NLP)")
-    st.chat_message("assistant").write("您好！我是基于知识图谱的财税智能助手。")
-    if prompt := st.chat_input("询问政策或风险..."):
+# ================= 7. 知识图谱与NLP引擎 =================
+elif menu == "7. 🕸️ 知识图谱与NLP引擎":
+    st.title("🕸️ 财税底层架构：知识图谱与NLP")
+    st.markdown("展示系统的底层AI能力：基于图数据库的政策推理，以及基于大模型的意图识别。")
+    
+    st.subheader("1. 税收知识图谱推理拓扑")
+    fig = go.Figure()
+    nodes = {"星耀科技": (1, 2), "软件行业": (3, 3), "高新资质": (3, 1), "15%税率": (5, 3), "研发加计": (5, 1), "税务稽查": (0, 0)}
+    edges = [("星耀科技", "软件行业"), ("星耀科技", "高新资质"), ("高新资质", "15%税率"), ("软件行业", "研发加计"), ("星耀科技", "税务稽查")]
+    
+    for start, end in edges:
+        fig.add_trace(go.Scatter(x=[nodes[start][0], nodes[end][0]], y=[nodes[start][1], nodes[end][1]], mode='lines', line=dict(width=2, color='#CBD5E1'), hoverinfo='none', showlegend=False))
+        
+    node_x, node_y, node_text, node_color = [], [], [], []
+    colors = {"星耀科技": "#3B82F6", "软件行业": "#10B981", "高新资质": "#10B981", "15%税率": "#8B5CF6", "研发加计": "#8B5CF6", "税务稽查": "#EF4444"}
+    for n, (x, y) in nodes.items():
+        node_x.append(x); node_y.append(y); node_text.append(n); node_color.append(colors[n])
+        
+    fig.add_trace(go.Scatter(x=node_x, y=node_y, mode='markers+text', text=node_text, textposition="bottom center", marker=dict(size=30, color=node_color), showlegend=False))
+    fig.update_layout(xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False), plot_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(l=0,r=0,t=0,b=0))
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("2. NLP 财税智能问答")
+    st.chat_message("assistant").write("您好！我是财税大模型助手。我已关联您的企业画像，请问有关于税务筹划或合规的问题吗？")
+    if prompt := st.chat_input("例如：我们公司买了一批服务器，进项税能抵扣吗？"):
         st.chat_message("user").write(prompt)
-        st.chat_message("assistant").write("根据图谱推理，贵公司符合研发加计扣除条件，请务必保留研发工时分配表备查。")
+        st.chat_message("assistant").write("""根据贵公司（软件与信息技术服务业，一般纳税人）的画像，购买服务器用于生产经营，取得的增值税专用发票**可以抵扣进项税额**。
+        
+**操作建议**：
+1. 确保发票品名为“服务器”或“电子设备”，而非“办公用品”。
+2. 请在发票综合服务平台进行勾选认证。
+3. 对应的折旧费用，如符合规定，还可享受固定资产加速折旧政策。""")
 
-# ================= 8. 消息提醒与归档 =================
-elif menu == "8. 🔔 消息提醒与归档":
-    st.title("🔔 政策变动与合规提醒")
-    st.markdown("税收政策库动态更新，对政策变更、申报期限、涉税风险事项提供站内提醒。")
+# ================= 8. 政策更新与合规提醒 =================
+elif menu == "8. 🔔 政策更新与合规提醒":
+    st.title("🔔 政策动态与合规事项提醒")
+    st.markdown("实时抓取国家税务总局最新政策，并结合企业特征进行个性化合规倒计时提醒。")
     
-    with st.container(border=True):
-        st.info("📢 **政策变更更新 (2026-10-20)**：财政部发布公告，研发费用加计扣除比例100%制度长期执行。")
-        st.warning("⏰ **申报期限提醒**：距离本月增值税及企业所得税申报期截止还有 3 天。")
-        st.error("🚨 **涉税风险提醒**：系统检测到进项税负异常，请前往【风险看板】查看整改报告。")
+    tab1, tab2 = st.tabs(["📢 最新财税政策库", "⏰ 合规与申报倒计时"])
     
-    st.markdown("### 订阅设置")
-    st.checkbox("接收最新政策变更实时推送", value=True)
-    st.checkbox("接收申报期限倒计时提醒", value=True)
+    with tab1:
+        st.info("**2026-10-18 财政部 税务总局公告**：关于进一步支持小微企业发展的税费政策指引。对小型微利企业年应纳税所得额不超过300万元的部分，减按25%计入应纳税所得额，按20%的税率缴纳企业所得税。")
+        st.success("**2026-10-15 国家税务总局公告**：全面数字化电子发票（数电票）开具指南更新，新增特定要素发票开具规范。")
+        st.warning("**2026-10-01 地方税务局通知**：关于开展2026年度高新技术企业认定管理工作的通知。")
+        
+    with tab2:
+        st.markdown("### 智能待办事项")
+        st.checkbox("【10月23日截止】申报缴纳本月增值税及附加税费", value=False)
+        st.checkbox("【10月25日截止】完成第三季度企业所得税预缴申报", value=False)
+        st.checkbox("【11月15日截止】报送上年度关联业务往来报告表", value=False)
+        st.checkbox("【12月31日截止】确认并享受研发费用加计扣除优惠", value=False)
